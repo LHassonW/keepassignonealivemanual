@@ -9,37 +9,45 @@ const fs = require('fs');
   const page = await context.newPage();
 
   const fileName = 'dummy.sql'; 
-  if (!fs.existsSync(fileName)) {
-    console.error(`❌ ERROR: File "${fileName}" not found!`);
-    process.exit(1);
-  }
 
   try {
-    console.log('🌐 Navigating...');
-    await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { waitUntil: 'networkidle' });
+    console.log('🌐 Navigating to site...');
+    await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
+      waitUntil: 'networkidle' 
+    });
 
-    console.log('🔑 Entering password...');
-    await page.locator('#password').fill('Almaty');
+    // 1. Enter Password
+    console.log('🔑 Looking for password box...');
+    const passwordBox = page.locator('#password');
+    await passwordBox.waitFor({ state: 'visible', timeout: 15000 });
+    await passwordBox.fill('Almaty');
+    console.log('✅ Password entered.');
 
-    console.log('📁 Locating file input...');
-    // We use the ID you gave: sql-file
+    // 2. Upload File
+    console.log('📁 Looking for file input...');
     const fileInput = page.locator('#sql-file');
-    
-    // This is the "Magic" line: 
-    // It attaches the file even if the element is hidden/transparent
+    // We wait for the input to exist in the DOM
+    await fileInput.waitFor({ state: 'attached', timeout: 15000 });
     await fileInput.setInputFiles(fileName);
+    console.log('✅ File attached.');
 
+    // 3. Click the Button
     console.log('🖱️ Clicking Upload button...');
-    // Using the button type submit to be safe
-    await page.click('button[type="submit"]');
+    const uploadBtn = page.locator('button[type="submit"]');
+    
+    // We wait until the button is no longer "disabled"
+    await uploadBtn.waitFor({ state: 'visible' });
+    
+    // Force click in case React is still processing
+    await uploadBtn.click({ force: true });
 
-    console.log('⏳ Waiting for success...');
-    await page.waitForTimeout(10000);
+    console.log('⏳ Waiting for result...');
+    await page.waitForTimeout(5000);
     
     console.log('✅ Action Successful! Final URL:', page.url());
 
   } catch (error) {
-    console.error('❌ Script failed:');
+    console.error('❌ Script failed. Error detail:');
     console.error(error.message);
     process.exit(1);
   } finally {
