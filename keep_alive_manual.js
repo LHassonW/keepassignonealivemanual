@@ -6,41 +6,38 @@ const { chromium } = require('playwright');
 
   try {
     console.log('🌐 Navigating to login page...');
+    // We give the page a long time to load in case of the InfinityFree security screen
     await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/login', { 
       waitUntil: 'networkidle', 
-      timeout: 60000 
+      timeout: 90000 
     });
 
-    // 1. Enter the password using the ID we found earlier
+    // 1. WAIT for the password box to actually appear
+    console.log('⏳ Waiting for password box to load...');
+    await page.waitForSelector('#password', { state: 'visible', timeout: 30000 });
+
+    // 2. Enter the password
     console.log('🔑 Entering password...');
-    // We use a "locator" which is more robust
-    const passwordInput = page.locator('#password');
-    await passwordInput.waitFor({ state: 'visible' });
-    await passwordInput.fill('Almaty');
+    await page.fill('#password', 'Almaty');
 
     await page.waitForTimeout(2000);
 
-    // 2. Upload the file
+    // 3. Upload the file
     console.log('📁 Uploading file...');
-    // We try to find the file input by its type if the ID is failing
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles('dummy.sql');
+    // Ensure 'dummy.sql' exists in your GitHub repo!
+    await page.setInputFiles('#sql-file', 'dummy.sql');
 
-    // 3. Click the Submit button
+    // 4. Click the Submit button
     console.log('🖱️ Clicking Upload and Grade...');
-    // We look for the exact text on the button
-    await page.getByText('Upload and Grade SQL').click();
+    await page.click('button[type="submit"]');
 
-    console.log('⏳ Waiting for result...');
-    await page.waitForTimeout(10000); 
-
-    console.log('✅ Action Successful! Current URL:', page.url());
+    // Wait to see the result
+    await page.waitForTimeout(10000);
+    console.log('✅ Action Successful! Final URL:', page.url());
 
   } catch (error) {
-    console.error('❌ Script failed. Taking a screenshot for proof...');
-    // This will save a picture of where the script got stuck
-    await page.screenshot({ path: 'error.png' });
-    console.error(error);
+    console.error('❌ Script failed. Printing error details:');
+    console.error(error.message);
     process.exit(1);
   } finally {
     await browser.close();
