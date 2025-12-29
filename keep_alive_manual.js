@@ -8,10 +8,9 @@ const fs = require('fs');
   });
   const page = await context.newPage();
 
-  // CHECK: Does the file actually exist in the repo?
   const fileName = 'dummy.sql'; 
   if (!fs.existsSync(fileName)) {
-    console.error(`❌ ERROR: The file "${fileName}" was not found in your GitHub repository!`);
+    console.error(`❌ ERROR: File "${fileName}" not found!`);
     process.exit(1);
   }
 
@@ -21,19 +20,21 @@ const fs = require('fs');
 
     console.log('🔑 Entering password...');
     await page.locator('#password').fill('Almaty');
-    await page.waitForTimeout(1000);
 
-    console.log('📁 Uploading file...');
-    // This finds the input even if the ID is being tricky
-    const fileInput = page.locator('input[type="file"]');
+    console.log('📁 Locating file input...');
+    // We use the ID you gave: sql-file
+    const fileInput = page.locator('#sql-file');
+    
+    // This is the "Magic" line: 
+    // It attaches the file even if the element is hidden/transparent
     await fileInput.setInputFiles(fileName);
 
     console.log('🖱️ Clicking Upload button...');
-    // Using the button text is often more reliable than the class list
-    await page.locator('button:has-text("Upload and Grade SQL")').click();
+    // Using the button type submit to be safe
+    await page.click('button[type="submit"]');
 
     console.log('⏳ Waiting for success...');
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(10000);
     
     console.log('✅ Action Successful! Final URL:', page.url());
 
