@@ -1,49 +1,44 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
 
 (async () => {
-  // 1. Launch browser with a "Real Person" identity (User Agent)
   const browser = await chromium.launch();
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   });
   const page = await context.newPage();
 
+  // CHECK: Does the file actually exist in the repo?
+  const fileName = 'dummy.sql'; 
+  if (!fs.existsSync(fileName)) {
+    console.error(`❌ ERROR: The file "${fileName}" was not found in your GitHub repository!`);
+    process.exit(1);
+  }
+
   try {
-    console.log('🌐 Navigating to the site...');
-    // Updated to the main URL
-    await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-      waitUntil: 'networkidle', 
-      timeout: 90000 
-    });
+    console.log('🌐 Navigating...');
+    await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { waitUntil: 'networkidle' });
 
-    // 2. Wait for the password box to appear
-    console.log('⏳ Waiting for password box to load...');
-    const passwordBox = page.locator('#password');
-    await passwordBox.waitFor({ state: 'visible', timeout: 30000 });
-
-    // 3. Enter the password
     console.log('🔑 Entering password...');
-    await passwordBox.fill('Almaty');
+    await page.locator('#password').fill('Almaty');
+    await page.waitForTimeout(1000);
 
-    await page.waitForTimeout(2000);
-
-    // 4. Upload the file
     console.log('📁 Uploading file...');
-    // Ensure 'dummy.sql' exists in your GitHub repo!
-    await page.setInputFiles('#sql-file', 'dummy.sql');
+    // This finds the input even if the ID is being tricky
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(fileName);
 
-    // 5. Click the Submit button
-    console.log('🖱️ Clicking Upload and Grade...');
-    await page.click('button[type="submit"]');
+    console.log('🖱️ Clicking Upload button...');
+    // Using the button text is often more reliable than the class list
+    await page.locator('button:has-text("Upload and Grade SQL")').click();
 
-    // Wait for the server to process the upload
-    console.log('⏳ Waiting for success page...');
-    await page.waitForTimeout(10000);
+    console.log('⏳ Waiting for success...');
+    await page.waitForTimeout(8000);
     
     console.log('✅ Action Successful! Final URL:', page.url());
 
   } catch (error) {
-    console.error('❌ Script failed. Printing error details:');
+    console.error('❌ Script failed:');
     console.error(error.message);
     process.exit(1);
   } finally {
