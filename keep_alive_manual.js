@@ -13,7 +13,8 @@ const fs = require('fs');
   try {
     console.log('🌐 Navigating to site...');
     await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-      waitUntil: 'networkidle' 
+      waitUntil: 'domcontentloaded', // Change from 'networkidle'
+      timeout: 60000                 // Increase to 60 seconds
     });
 
     // 1. Enter Password and press ENTER
