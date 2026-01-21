@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
-const fs = require('fs');
 
 (async () => {
+  // Launch browser with a realistic User Agent to help bypass basic bot filters
   const browser = await chromium.launch();
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -12,36 +12,38 @@ const fs = require('fs');
 
   try {
     console.log('🌐 Navigating to site...');
+    // 'commit' is used because it triggers as soon as the server responds, 
+    // bypassing the wait for slow background scripts.
     await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-      waitUntil: 'domcontentloaded', // Change from 'networkidle'
-      timeout: 60000                 // Increase to 60 seconds
+      waitUntil: 'commit', 
+      timeout: 90000 
     });
 
-    // 1. Enter Password and press ENTER
-    console.log('🔑 Looking for password box...');
+    // Wait for the InfinityFree security challenge to process and show the password field
+    console.log('🔑 Waiting for password box to appear...');
     const passwordBox = page.locator('#password');
-    await passwordBox.waitFor({ state: 'visible', timeout: 15000 });
+    await passwordBox.waitFor({ state: 'visible', timeout: 45000 });
+    
     await passwordBox.fill('Almaty');
-    await passwordBox.press('Enter'); // This triggers the "unlock" logic
+    await passwordBox.press('Enter'); 
     console.log('✅ Password entered and submitted.');
 
-    // 2. WAIT for the file input to appear after the password unlock
+    // Wait for the next page to load after the password
     console.log('⏳ Waiting for file input to appear...');
     const fileInput = page.locator('#sql-file');
-    // We give it 15 seconds to appear after the login
-    await fileInput.waitFor({ state: 'visible', timeout: 15000 });
+    await fileInput.waitFor({ state: 'visible', timeout: 30000 });
     
     console.log('📁 Attaching file...');
     await fileInput.setInputFiles(fileName);
     console.log('✅ File attached.');
 
-    // 3. Click the final Button
-    console.log('🖱️ Clicking Upload button...');
+    console.log('鼠标 Clicking Upload button...');
     const uploadBtn = page.locator('button[type="submit"]');
     await uploadBtn.click({ force: true });
 
-    console.log('⏳ Waiting for result...');
-    await page.waitForTimeout(5000);
+    // Final wait to ensure the upload is processed by the server
+    console.log('⏳ Waiting for final result...');
+    await page.waitForTimeout(8000);
     
     console.log('✅ Action Successful! Final URL:', page.url());
 
