@@ -2,13 +2,13 @@ name: Manual Assignment Keep Alive
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    # Changed from 3:00 to 3:17 to avoid heavy traffic on the hour
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 jobs:
   run_script:
     runs-on: ubuntu-latest
-    # Increase the overall timeout of the job to 15 minutes
     timeout-minutes: 15
     steps:
       - name: Checkout Repository
@@ -23,5 +23,5 @@ jobs:
         run: npm install playwright && npx playwright install chromium --with-deps
 
       - name: Run Keep Alive Script
-        # We still keep the retry logic here as a backup
-        run: node keep_alive_manual.js || (sleep 30 && node keep_alive_manual.js)
+        # Increased sleep to 120 seconds (2 minutes) to give the server time to recover
+        run: node keep_alive_manual.js || (sleep 120 && node keep_alive_manual.js)
