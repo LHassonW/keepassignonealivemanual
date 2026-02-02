@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 (async () => {
-  // 1. Launch with slightly more 'human' args
+  // Launch with automation bypass
   const browser = await chromium.launch({
     args: ['--disable-blink-features=AutomationControlled']
   });
@@ -13,56 +13,56 @@ const { chromium } = require('playwright');
 
   const page = await context.newPage();
   const fileName = 'dummy.sql'; 
+  
+  // Your Project Details
+  const SUPABASE_URL = 'https://gyiclkufjjvuqlxyepft.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5aWNsa3Vmamp2dXFseHllcGZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NDc4MTgsImV4cCI6MjA3NjIyMzgxOH0.JeIfmQvfS818PUlMWDXFqIPR-hZUPQWqZHolgeF1woo';
 
   try {
-    console.log('🌐 Navigating to site...');
-    
-    // 2. Change 'commit' to 'domcontentloaded' or 'load' 
-    // Free hosts often use a JS redirect for the security challenge. 
-    // 'commit' might trigger too early before the redirect happens.
+    console.log('🌐 Navigating to website UI...');
     await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-      waitUntil: 'load', 
+      waitUntil: 'domcontentloaded', 
       timeout: 90000 
     });
 
-    // 3. Optional: Add a small sleep to let the security challenge cookie set
-    await page.waitForTimeout(5000);
-
-    console.log('🔑 Checking for password box...');
+    console.log('🔑 Handling Login...');
     const passwordBox = page.locator('#password');
-    
-    // If the site is VERY slow, we want to see if it even loaded the right page
-    try {
-        await passwordBox.waitFor({ state: 'visible', timeout: 30000 });
-    } catch (e) {
-        console.log('Current Page Title:', await page.title());
-        console.log('Current URL:', page.url());
-        throw new Error('Password box not found. Site might be showing a security challenge or 403 error.');
-    }
-    
+    await passwordBox.waitFor({ state: 'visible', timeout: 30000 });
     await passwordBox.fill('Almaty');
     await page.keyboard.press('Enter'); 
-    console.log('✅ Password submitted.');
 
-    console.log('⏳ Waiting for file input...');
+    console.log('📁 Attaching and Uploading SQL File...');
     const fileInput = page.locator('#sql-file');
     await fileInput.waitFor({ state: 'visible', timeout: 30000 });
-    
-    console.log('📁 Attaching file...');
     await fileInput.setInputFiles(fileName);
     
-    // 4. Use standard click and wait for response
     await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle' }).catch(() => {}),
         page.locator('button[type="submit"]').click()
     ]);
 
-    console.log('✅ Success! Final URL:', page.url());
+    // --- THE FIX: DIRECT HEARTBEAT TO SUPABASE ---
+    // This ensures Supabase sees a real API request even if the PHP upload fails.
+    console.log('📡 Sending Direct Heartbeat to Supabase PostgREST...');
+    const heartbeat = await page.evaluate(async ({ url, key }) => {
+      try {
+        const response = await fetch(`${url}/rest/v1/live?select=id&limit=1`, {
+          headers: {
+            "apikey": key,
+            "Authorization": `Bearer ${key}`
+          }
+        });
+        return response.status;
+      } catch (e) {
+        return e.message;
+      }
+    }, { url: SUPABASE_URL, key: SUPABASE_KEY });
+
+    console.log(`✅ Heartbeat status: ${heartbeat} (Should be 200 or 404)`);
+    console.log('🏁 Success! Final URL:', page.url());
 
   } catch (error) {
-    console.error('❌ Script failed. Error detail:');
-    console.error(error.message);
-    // Take a screenshot to see what went wrong (very helpful in GitHub Actions)
+    console.error('❌ Script failed:', error.message);
     await page.screenshot({ path: 'error_screenshot.png' });
     process.exit(1);
   } finally {
