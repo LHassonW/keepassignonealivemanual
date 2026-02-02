@@ -1,57 +1,69 @@
 const { chromium } = require('playwright');
 
 (async () => {
-  const browser = await chromium.launch();
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  // 1. Launch with slightly more 'human' args
+  const browser = await chromium.launch({
+    args: ['--disable-blink-features=AutomationControlled']
   });
+
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 720 }
+  });
+
   const page = await context.newPage();
   const fileName = 'dummy.sql'; 
 
   try {
-    console.log('🌐 Navigating to site (Attempt 1)...');
+    console.log('🌐 Navigating to site...');
     
-    // We increase the timeout to 2 minutes (120000ms)
-    // Sometimes the first hit just "wakes up" the server
-    try {
-        await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-          waitUntil: 'commit', 
-          timeout: 120000 
-        });
-    } catch (e) {
-        console.log('⚠️ First attempt timed out, retrying immediately...');
-        await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
-          waitUntil: 'commit', 
-          timeout: 120000 
-        });
-    }
+    // 2. Change 'commit' to 'domcontentloaded' or 'load' 
+    // Free hosts often use a JS redirect for the security challenge. 
+    // 'commit' might trigger too early before the redirect happens.
+    await page.goto('https://assignmentonejinhuapartthreefour.great-site.net/', { 
+      waitUntil: 'load', 
+      timeout: 90000 
+    });
 
-    console.log('🔑 Waiting for password box...');
+    // 3. Optional: Add a small sleep to let the security challenge cookie set
+    await page.waitForTimeout(5000);
+
+    console.log('🔑 Checking for password box...');
     const passwordBox = page.locator('#password');
-    // Give the security challenge page plenty of time to resolve
-    await passwordBox.waitFor({ state: 'visible', timeout: 60000 });
+    
+    // If the site is VERY slow, we want to see if it even loaded the right page
+    try {
+        await passwordBox.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (e) {
+        console.log('Current Page Title:', await page.title());
+        console.log('Current URL:', page.url());
+        throw new Error('Password box not found. Site might be showing a security challenge or 403 error.');
+    }
     
     await passwordBox.fill('Almaty');
-    await passwordBox.press('Enter'); 
+    await page.keyboard.press('Enter'); 
     console.log('✅ Password submitted.');
 
     console.log('⏳ Waiting for file input...');
     const fileInput = page.locator('#sql-file');
-    await fileInput.waitFor({ state: 'visible', timeout: 60000 });
+    await fileInput.waitFor({ state: 'visible', timeout: 30000 });
     
     console.log('📁 Attaching file...');
     await fileInput.setInputFiles(fileName);
     
-    const uploadBtn = page.locator('button[type="submit"]');
-    await uploadBtn.click({ force: true });
+    // 4. Use standard click and wait for response
+    await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle' }).catch(() => {}),
+        page.locator('button[type="submit"]').click()
+    ]);
 
-    // Wait longer for the PHP script to process the upload
-    await page.waitForTimeout(15000);
     console.log('✅ Success! Final URL:', page.url());
 
   } catch (error) {
     console.error('❌ Script failed. Error detail:');
     console.error(error.message);
+    // Take a screenshot to see what went wrong (very helpful in GitHub Actions)
+    await page.screenshot({ path: 'error_screenshot.png' });
     process.exit(1);
   } finally {
     await browser.close();
